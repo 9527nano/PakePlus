@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<!-- r10 阶段 0 能力探针：用 PakePlus 打包本页（或与工作台同批打包后打开），
+     逐项确认桌面壳的 Tauri API 能力。全绿即可实施桌面适配层的真机验证。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>科研工作台 · 桌面壳能力探针</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; margin:0; padding:24px; background:#F7F9FB; color:#1F2937;}
+  h1{font-size:20px; font-weight:500; margin:0 0 6px;}
+  .sub{font-size:13px; color:#6B7280; margin-bottom:18px;}
+  .item{display:flex; align-items:flex-start; gap:10px; padding:10px 14px; background:#fff; border:1px solid #E5E7EB; border-radius:10px; margin-bottom:8px; font-size:14px;}
+  .mark{flex:0 0 22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#fff; background:#9CA3AF;}
+  .mark.ok{background:#16A34A;} .mark.err{background:#DC2626;} .mark.warn{background:#D97706;}
+  .detail{font-size:12px; color:#6B7280; margin-top:2px; word-break:break-all;}
+  button{min-height:38px; padding:6px 16px; border:1px solid #185FA5; border-radius:8px; background:#fff; color:#185FA5; font-size:14px; cursor:pointer;}
+  button:hover{background:#E6F1FB;}
+  #log{margin-top:14px; font-size:12px; color:#374151; background:#fff; border:1px solid #E5E7EB; border-radius:10px; padding:12px; max-height:220px; overflow:auto; white-space:pre-wrap;}
+</style>
+</head>
+<body>
+<h1>桌面壳能力探针</h1>
+<div class="sub">用于 PakePlus 打包后验证 Tauri API 能力；浏览器直接打开时应显示「非桌面壳」。</div>
+<div id="list"></div>
+<button id="btnDir">选择一个文件夹（测 dialog）</button>
+<button id="btnWrite">向所选目录写测试文件（测 fs 写）</button>
+<div id="log">就绪。</div>
+<script>
+(function(){
+  var items = [];
+  function add(name, ok, detail){ items.push({ name:name, ok:ok, detail:detail || "" }); render(); }
+  function render(){
+    document.getElementById("list").innerHTML = items.map(function(it){
+      var cls = it.ok === true ? "ok" : it.ok === false ? "err" : "warn";
+      var txt = it.ok === true ? "✓" : it.ok === false ? "✕" : "…";
+      return '<div class="item"><span class="mark ' + cls + '">' + txt + '</span><span>' + it.name +
+        (it.detail ? '<div class="detail">' + it.detail + '</div>' : '') + '</span></div>';
+    }).join("");
+  }
+  function log(m){ var el = document.getElementById("log"); el.textContent += "\n" + m; el.scrollTop = el.scrollHeight; }
+  var T = window.__TAURI__;
+  add("Tauri API（window.__TAURI__）", !!T, T ? "已注入——桌面壳正常" : "未注入——浏览器环境或打包未启用 Tauri API");
+  if(!T){ return; }
+  var core = T.core, FS = T.fs, DLG = T.dialog, P = T.path, Store = T.store;
+  add("core（invoke）", !!core, "Tauri 命令通道");
+  add("fs 插件（readDir/readTextFile/writeTextFile）", !!FS && !!FS.readDir && !!FS.readTextFile && !!FS.writeTextFile, "档案扫描与自动备份依赖");
+  add("dialog 插件（open directory）", !!DLG && !!DLG.open, "选监管文件夹/数据目录依赖");
+  add("path 插件（join/appDataDir）", !!P && !!P.join && !!P.appDataDir, "路径拼接依赖");
+  add("store 插件（可选）", !!Store, "未启用不影响：数据目录路径存 localStorage");
+  add("localStorage 可用（应用主存储）", (function(){ try{ localStorage.setItem("__probe","1"); localStorage.removeItem("__probe"); return true; }catch(e){ return false; } })(), "");
+  add("showDirectoryPicker（浏览器 API，桌面壳内应不可用——正常现象）", typeof window.showDirectoryPicker === "function", "桌面壳走 Tauri dialog，不依赖此 API");
+  (async function(){
+    try{
+      var dir = await P.appDataDir();
+      add("appDataDir 可读", true, dir);
+    }catch(e){ add("appDataDir 可读", false, String(e)); }
+  })();
+  var pickedDir = null;
+  document.getElementById("btnDir").onclick = async function(){
+    try{
+      var sel = await DLG.open({ directory:true, multiple:false, title:"探针：选择任意文件夹" });
+      pickedDir = Array.isArray(sel) ? sel[0] : sel;
+      log("dialog.open → " + pickedDir);
+    }catch(e){ log("dialog.open 失败：" + (e.message || e)); }
+  };
+  document.getElementById("btnWrite").onclick = async function(){
+    if(!pickedDir){ log("请先选择文件夹"); return; }
+    try{
+      /* Tauri v2 的 path.join 返回 Promise，必须 await（踩坑：同步用会得到 [object Promise] 当路径） */
+      var p = await P.join(pickedDir, "__probe_write_test.txt");
+      await FS.writeTextFile(p, "probe " + new Date().toISOString());
+      var back = await FS.readTextFile(p);
+      log("写入并回读成功：" + p + "（" + back.length + " 字节）——自动备份与档案扫描的写读链路可用");
+    }catch(e){
+      var msg = String(e.message || e);
+      log("写读失败：" + msg);
+      if(/Read-only|readonly|not allowed|denied|scope/i.test(msg))
+        log("提示：这是 Tauri fs 的目录权限（scope）限制——需要在 PakePlus 的打包配置里放宽 fs scope（允许所选目录写入），或改把数据目录设在应用数据目录内。");
+    }
+  };
+})();
+</script>
+</body>
+</html>
