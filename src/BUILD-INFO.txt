@@ -1,0 +1,11 @@
+科研工作台发布版本：r25
+draw.io 运行模式：工作台内全屏浮层（不创建 PakePlus 子 WebView）
+备用诊断跳板：drawio-host-r2421.html
+
+SHA-256：
+50941b68a765207dddbea00f601edaafcc97ce8872b99172990722a90a65b158  drawio-host-r2421.html
+589c5443d5dc9c7315f65d75add6d9276266657f9a455996d1073b76648e5517  drawio-host.css
+50941b68a765207dddbea00f601edaafcc97ce8872b99172990722a90a65b158  drawio-host.html
+93f2b8be42cbc87d60ce4f6e1ee7bc53c55dc841156b020185dd712b8c9a92d9  drawio-host.js
+1d33643eba59016b26dc4eaad2d0eda26aeea7a0e3fa3e24b8792b04fb3307bc  index.html
+2539144c1757724e881e03b63fff685d354624e3bd13b3066965a23f2cf90527  probe.html
