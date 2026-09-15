@@ -48,6 +48,9 @@
   add("dialog 插件（open directory）", !!DLG && !!DLG.open, "选监管文件夹/数据目录依赖");
   add("path 插件（join/appDataDir）", !!P && !!P.join && !!P.appDataDir, "路径拼接依赖");
   add("store 插件（可选）", !!Store, "未启用不影响：数据目录路径存 localStorage");
+  add("webviewWindow 插件 + WebviewWindow（draw.io 独立窗口依赖）", !!((T.webviewWindow && T.webviewWindow.WebviewWindow) || (T.window && T.window.WebviewWindow)), "PakePlus/Tauri 2 使用 __TAURI__.webviewWindow；旧版壳兼容 __TAURI__.window");
+  add("BroadcastChannel（draw.io 首选通信）", typeof window.BroadcastChannel === "function", "同源主窗口 ↔ 编辑器窗口消息通道；不依赖 Tauri event 插件");
+  add("event 插件（可选兼容回退）", (T.event && T.event.listen && T.event.emit) ? true : null, "未注入时不影响新版 draw.io 通信；仅供不支持 BroadcastChannel 的旧壳回退");
   add("localStorage 可用（应用主存储）", (function(){ try{ localStorage.setItem("__probe","1"); localStorage.removeItem("__probe"); return true; }catch(e){ return false; } })(), "");
   add("showDirectoryPicker（浏览器 API，桌面壳内应不可用——正常现象）", typeof window.showDirectoryPicker === "function", "桌面壳走 Tauri dialog，不依赖此 API");
   (async function(){
