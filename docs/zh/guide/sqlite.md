@@ -1,6 +1,6 @@
 # SQLite 数据库插件
 
-这个 Fork 已经把 Tauri SQLite 插件接入到桌面壳。它适合给需要本地持久化的单页应用使用：数据库文件放在 Tauri 的应用数据目录，不会写进 `.app` 资源，也不应该提交到 Git。
+这个 Fork 已经把 Tauri SQLite 插件接入到桌面壳。它适合给需要本地持久化的单页应用使用：数据库文件 `research-workbench.db` 放在 Tauri 的应用配置目录，不会写进 `.app` 资源，也不应该提交到 Git。旧版中文文件名会由科研工作台在首次启动时尝试迁移。
 
 ## 已经完成的壳侧配置
 
@@ -24,12 +24,14 @@ PakePlus 会把自定义脚本写入生成应用的 `config/inject/custom.js`，
 
 ```js
 await window.__WB_SQL_READY__;
-await window.__WB_SQL__.init({ database: "sqlite:科研工作台.db" });
+await window.__WB_SQL__.init({ database: "sqlite:research-workbench.db" });
 var snapshot = await window.__WB_SQL__.loadSnapshot();
 await window.__WB_SQL__.saveSnapshot(state, { reason: "state_save" });
 ```
 
-网页直接在浏览器中运行时不需要这段脚本，继续使用自己的 `localStorage` 降级层即可。桥接加载失败也应自动回退，不要阻断页面启动。
+网页直接在浏览器中运行时不需要这段脚本，继续使用自己的 `localStorage` 降级层即可。桥接加载失败时工作台会明确显示“SQLite 桥未就绪/初始化失败 · localStorage 降级”，不会把降级状态伪装成已写入 SQLite。
+
+`wb_state` 是主快照，保存使用单条 upsert；`wb_records` 是可重建派生索引，按批次写入。不要在自定义 JS 中使用跨多条 `execute()` 的 `BEGIN` / `COMMIT`，因为前端 SQL API 不提供固定连接的事务句柄。
 
 ## 常见问题
 
@@ -39,7 +41,7 @@ await window.__WB_SQL__.saveSnapshot(state, { reason: "state_save" });
 
 ### 为什么要同时有 `sql:default` 和 `sql:allow-execute`？
 
-`sql:default` 提供数据库加载、查询和关闭能力；保存快照还需要执行建表、插入、更新和事务语句，因此需要额外的 `sql:allow-execute`。
+`sql:default` 提供数据库加载、查询和关闭能力；保存快照还需要执行建表、插入、更新语句，因此需要额外的 `sql:allow-execute`。
 
 ### 如何判断是否生效？
 
