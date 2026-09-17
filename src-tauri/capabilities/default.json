@@ -88,6 +88,8 @@
         "os:allow-locale",
         "os:allow-hostname",
         "store:default",
+        "sql:default",
+        "sql:allow-execute",
         "clipboard-manager:allow-write-text",
         {
             "identifier": "http:default",
